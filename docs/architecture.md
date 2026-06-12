@@ -184,3 +184,17 @@ Future scope:
 - webhook implementation
 - schema implementation
 - deployment implementation
+
+## Current Schema Baseline
+
+The current repository baseline now includes a first-pass SQL schema under `supabase/migrations/`.
+
+Key assumptions reflected in that schema:
+
+- `documents` is still the system intake root for every uploaded file.
+- `document_extractions` stores advisory AI output only and does not approve accounting outcomes.
+- `expense_cases` is the human-reviewed accounting object and can link to multiple documents through `expense_case_documents`.
+- monthly grouping currently uses a simple `month` text field in `YYYY-MM` format for both `expense_cases` and `accounting_reports`
+- `accounting_reports` remains a downstream reporting layer intended to be generated from approved `expense_cases`
+
+This keeps the architecture aligned with the document-first workflow while avoiding premature implementation of webhook, dashboard, or AI execution details.

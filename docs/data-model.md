@@ -331,3 +331,95 @@ Relationships:
 - constraints ระดับ database engine
 - row-level security rules
 - migration plan
+
+## SQL Schema Baseline Notes
+
+The repository now includes an initial Supabase migration at `supabase/migrations/20260612230000_create_document_first_schema.sql` and seed data at `supabase/seed.sql`.
+
+This first SQL schema keeps the conceptual model document-first and translates it into these concrete decisions:
+
+- `documents` is the required intake root. Every uploaded file becomes a document record before extraction or case review.
+- `document_extractions` stores AI output separately from human-reviewed accounting truth.
+- `expense_cases` stores the reviewed accounting case and uses a simple `month` text field in `YYYY-MM` format for monthly grouping.
+- `expense_case_documents` is the many-to-many link that allows multiple evidence documents for one expense case.
+- `accounting_reports` is downstream-only and is intended to be generated from approved `expense_cases`.
+
+Concrete SQL status and type values in this baseline:
+
+- `line_users.role`
+  - `staff`
+  - `reviewer`
+  - `approver`
+  - `admin`
+- `documents.source_type`
+  - `line`
+  - `web_upload`
+  - `email`
+  - `manual`
+- `documents.document_type`
+  - `unknown`
+  - `slip`
+  - `receipt`
+  - `tax_invoice`
+  - `cash_bill`
+  - `utility_bill`
+  - `order_screenshot`
+  - `pdf`
+  - `text_note`
+  - `other`
+- `documents.status`
+  - `received`
+  - `extracted`
+  - `matched`
+  - `archived`
+  - `rejected`
+- `expense_cases.status`
+  - `inbox`
+  - `needs_review`
+  - `ready_to_approve`
+  - `approved`
+  - `rejected`
+  - `exported`
+- `expense_case_documents.role`
+  - `payment_slip`
+  - `order_proof`
+  - `receipt`
+  - `tax_invoice`
+  - `utility_bill`
+  - `supporting_doc`
+  - `other`
+- `accounting_reports.report_type`
+  - `substitute_receipt`
+  - `payment_voucher`
+  - `monthly_pack`
+  - `export_sheet`
+- `accounting_reports.status`
+  - `draft`
+  - `generated`
+  - `sent_to_accountant`
+  - `archived`
+- `report_exports.export_type`
+  - `docx`
+  - `pdf`
+  - `xlsx`
+  - `csv`
+  - `google_sheet`
+  - `google_drive_folder`
+- `company_integrations.integration_type`
+  - `line`
+  - `google_drive`
+  - `google_sheets`
+  - `gmail`
+  - `vercel`
+  - `openai`
+- `company_integrations.status`
+  - `inactive`
+  - `active`
+  - `error`
+
+Additional SQL-level choices in this baseline:
+
+- Check constraints are used for workflow statuses, types, and roles instead of PostgreSQL enums so future changes can be migrated more easily.
+- Indexes are added for `company_id`, `month`, `status`, `document_type`, `source_type`, `line_user_id`, `expense_case_id`, `document_id`, and `transfer_ref` where those fields exist.
+- `updated_at` trigger support is added for tables that include an `updated_at` column.
+- Row Level Security is enabled on all public tables as a safe Supabase default. Policies are intentionally deferred until the auth and permission model is implemented.
