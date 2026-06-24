@@ -1,14 +1,12 @@
-import "server-only";
-
-import { getSupabaseAdminClient } from "@/lib/supabase/server";
-import type { AuditLog, Json } from "@/types/database";
+import { getSupabaseAdminClient } from "../supabase/server.ts";
+import type { AuditLog, Json } from "../../types/database.ts";
 
 import {
   applyPagination,
   type PaginationInput,
   unwrapMany,
   unwrapSingle,
-} from "./_shared";
+} from "./_shared.ts";
 
 export type AddAuditLogInput = {
   companyId?: string | null;

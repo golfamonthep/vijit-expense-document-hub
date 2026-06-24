@@ -1,7 +1,7 @@
-import "server-only";
-
 export class MissingServerEnvError extends Error {
-  constructor(public readonly missingKeys: string[], context?: string) {
+  public readonly missingKeys: string[];
+
+  constructor(missingKeys: string[], context?: string) {
     const scope = context ? ` for ${context}` : "";
     super(
       `Missing required server environment variables${scope}: ${missingKeys.join(
@@ -9,6 +9,7 @@ export class MissingServerEnvError extends Error {
       )}. Update .env.example-backed local env values before calling this runtime path.`,
     );
     this.name = "MissingServerEnvError";
+    this.missingKeys = missingKeys;
   }
 }
 
@@ -16,6 +17,7 @@ type OptionalServerEnv = {
   supabaseUrl?: string;
   supabaseAnonKey?: string;
   supabaseServiceRoleKey?: string;
+  supabaseDocumentsBucket?: string;
   lineChannelSecret?: string;
   lineChannelAccessToken?: string;
   openAiApiKey?: string;
@@ -32,6 +34,7 @@ export function getOptionalServerEnv(): OptionalServerEnv {
     supabaseUrl: readEnvValue("SUPABASE_URL"),
     supabaseAnonKey: readEnvValue("SUPABASE_ANON_KEY"),
     supabaseServiceRoleKey: readEnvValue("SUPABASE_SERVICE_ROLE_KEY"),
+    supabaseDocumentsBucket: readEnvValue("SUPABASE_DOCUMENTS_BUCKET"),
     lineChannelSecret: readEnvValue("LINE_CHANNEL_SECRET"),
     lineChannelAccessToken: readEnvValue("LINE_CHANNEL_ACCESS_TOKEN"),
     openAiApiKey: readEnvValue("OPENAI_API_KEY"),
@@ -65,4 +68,17 @@ export function requireSupabaseAdminEnv(context?: string): {
     supabaseUrl,
     supabaseServiceRoleKey,
   };
+}
+
+export function getDocumentsBucket(): string {
+  const env = getOptionalServerEnv();
+
+  if (!env.supabaseDocumentsBucket) {
+    throw new MissingServerEnvError(
+      ["SUPABASE_DOCUMENTS_BUCKET"],
+      "document storage access",
+    );
+  }
+
+  return env.supabaseDocumentsBucket;
 }

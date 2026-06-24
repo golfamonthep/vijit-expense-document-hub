@@ -1,9 +1,7 @@
-import "server-only";
-
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { requireSupabaseAdminEnv } from "@/lib/env";
-import type { Database } from "@/types/database";
+import { requireSupabaseAdminEnv } from "../env.ts";
+import type { Database } from "../../types/database.ts";
 
 let adminClient: SupabaseClient<Database> | undefined;
 
@@ -26,4 +24,3 @@ export function getSupabaseAdminClient(): SupabaseClient<Database> {
 
   return adminClient;
 }
-

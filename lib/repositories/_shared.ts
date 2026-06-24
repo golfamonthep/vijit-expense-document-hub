@@ -1,5 +1,3 @@
-import "server-only";
-
 import type {
   PostgrestMaybeSingleResponse,
   PostgrestResponse,
@@ -7,9 +5,12 @@ import type {
 } from "@supabase/supabase-js";
 
 export class RepositoryError extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  public readonly cause?: unknown;
+
+  constructor(message: string, cause?: unknown) {
     super(message);
     this.name = "RepositoryError";
+    this.cause = cause;
   }
 }
 
@@ -77,4 +78,3 @@ export function unwrapMany<T>(
 
   return response.data ?? [];
 }
-

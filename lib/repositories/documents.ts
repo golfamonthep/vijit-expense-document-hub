@@ -1,11 +1,9 @@
-import "server-only";
-
-import { getSupabaseAdminClient } from "@/lib/supabase/server";
+import { getSupabaseAdminClient } from "../supabase/server.ts";
 import type {
   Document,
   DocumentStatus,
   DocumentType,
-} from "@/types/database";
+} from "../../types/database.ts";
 
 import {
   applyPagination,
@@ -13,9 +11,10 @@ import {
   unwrapMany,
   unwrapMaybeSingle,
   unwrapSingle,
-} from "./_shared";
+} from "./_shared.ts";
 
 export type CreateDocumentInput = {
+  id?: string;
   companyId: string;
   sourceType: Document["source_type"];
   sourceChannelId?: string | null;
@@ -34,6 +33,7 @@ export async function createDocument(input: CreateDocumentInput): Promise<Docume
   const response = await supabase
     .from("documents")
     .insert({
+      id: input.id,
       company_id: input.companyId,
       source_type: input.sourceType,
       source_channel_id: input.sourceChannelId ?? null,
