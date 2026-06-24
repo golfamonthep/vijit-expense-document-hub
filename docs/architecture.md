@@ -217,3 +217,26 @@ The temporary admin gate is intentionally lightweight and runtime-only:
 - `ADMIN_SECRET` is validated server-side when configured
 - missing `ADMIN_SECRET` does not break build or static rendering
 - missing Supabase runtime env fails gracefully at request time instead of at build time
+
+## STEP 08 AI Extraction Addition
+
+STEP 08 adds the first real extraction execution path without changing the document-first architecture:
+
+- `POST /api/admin/documents/[id]/extract` is a protected server route that triggers one extraction run for one stored document
+- the route reads the existing `Document` record and stored file from Supabase Storage before any AI call
+- extraction is handled behind the `lib/ai/*` service boundary so provider-specific logic stays separate from document workflow logic
+- validated advisory output is written to `document_extractions`, not directly to `expense_cases`
+- `documents.status` moves to `extracted`, and `documents.document_type` is updated only when the extracted type is not `unknown`
+- `audit_logs` records `ai_extraction_run` for traceability
+
+Current constraints in this step:
+
+- image-first support only for JPEG, PNG, and WEBP
+- PDF input currently returns a safe warning path instead of OCR/PDF conversion
+- extraction remains inline with the request path, so future large-file production handling may need a background job boundary
+
+This preserves the existing trust boundaries:
+
+- stored files remain untrusted input
+- AI output remains untrusted and must pass validation
+- extraction still cannot approve accounting outcomes or create expense cases automatically

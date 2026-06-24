@@ -82,3 +82,13 @@ export function getDocumentsBucket(): string {
 
   return env.supabaseDocumentsBucket;
 }
+
+export function requireOpenAiApiKey(context?: string): string {
+  const apiKey = getOptionalServerEnv().openAiApiKey;
+
+  if (!apiKey) {
+    throw new MissingServerEnvError(["OPENAI_API_KEY"], context ?? "OpenAI extraction");
+  }
+
+  return apiKey;
+}

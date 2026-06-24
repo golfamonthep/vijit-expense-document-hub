@@ -20,6 +20,11 @@ export type GetDocumentSignedUrlInput = {
   expiresInSeconds?: number;
 };
 
+export type DownloadDocumentFileInput = {
+  bucket: string;
+  path: string;
+};
+
 export function buildDocumentStoragePath(input: BuildDocumentStoragePathInput): string {
   const receivedAt = input.receivedAt ? new Date(input.receivedAt) : new Date();
   const year = receivedAt.getUTCFullYear().toString();
@@ -58,4 +63,17 @@ export async function getDocumentSignedUrl(
   }
 
   return response.data.signedUrl;
+}
+
+export async function downloadDocumentFile(
+  input: DownloadDocumentFileInput,
+): Promise<Buffer> {
+  const supabase = getSupabaseAdminClient();
+  const response = await supabase.storage.from(input.bucket).download(input.path);
+
+  if (response.error) {
+    throw new Error(`Failed to download document file: ${response.error.message}`);
+  }
+
+  return Buffer.from(await response.data.arrayBuffer());
 }
