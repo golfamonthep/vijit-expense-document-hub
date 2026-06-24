@@ -1,4 +1,4 @@
-import type { Document, DocumentType } from "../../types/database.ts";
+import type { Document, DocumentType, Json } from "../../types/database.ts";
 import { getDocumentsBucket } from "../env.ts";
 import {
   addAuditLog as addAuditLogRepository,
@@ -13,6 +13,23 @@ import {
   uploadDocumentFile as uploadDocumentFileToStorage,
 } from "../storage/documents.ts";
 
+type CreateStoredDocumentInput = {
+  companyId: string;
+  sourceType: "line" | "web_upload";
+  sourceChannelId?: string | null;
+  sourceUserId?: string | null;
+  originalFileName?: string | null;
+  mimeType?: string | null;
+  arrayBuffer: ArrayBuffer;
+  documentType: DocumentType;
+  auditAction: "line_document_saved" | "web_document_uploaded";
+  buildAuditPayload: (context: {
+    bucket: string;
+    storagePath: string;
+    mimeType: string;
+  }) => Json;
+};
+
 export type CreateDocumentFromLineMessageInput = {
   companyId: string;
   sourceType: "line";
@@ -25,7 +42,19 @@ export type CreateDocumentFromLineMessageInput = {
   documentType: DocumentType;
 };
 
-type CreateDocumentFromLineMessageDeps = {
+export type CreateDocumentFromWebUploadInput = {
+  companyId: string;
+  sourceType: "web_upload";
+  sourceChannelId?: string | null;
+  sourceUserId?: string | null;
+  originalFileName: string;
+  mimeType: string;
+  arrayBuffer: ArrayBuffer;
+  documentType: DocumentType;
+  note?: string | null;
+};
+
+export type CreateStoredDocumentDeps = {
   generateDocumentId: () => string;
   getDocumentsBucket: () => string;
   uploadDocumentFile: (input: {
@@ -39,7 +68,7 @@ type CreateDocumentFromLineMessageDeps = {
   now: () => Date;
 };
 
-const defaultDeps: CreateDocumentFromLineMessageDeps = {
+const defaultDeps: CreateStoredDocumentDeps = {
   generateDocumentId: () => crypto.randomUUID(),
   getDocumentsBucket,
   uploadDocumentFile: uploadDocumentFileToStorage,
@@ -60,6 +89,8 @@ function inferStorageExtension(
       return ".jpg";
     case "image/png":
       return ".png";
+    case "image/webp":
+      return ".webp";
     case "image/heic":
     case "image/heif":
       return ".heic";
@@ -68,9 +99,9 @@ function inferStorageExtension(
   }
 }
 
-export async function createDocumentFromLineMessage(
-  input: CreateDocumentFromLineMessageInput,
-  deps: Partial<CreateDocumentFromLineMessageDeps> = {},
+async function createStoredDocument(
+  input: CreateStoredDocumentInput,
+  deps: Partial<CreateStoredDocumentDeps> = {},
 ): Promise<Document> {
   const resolvedDeps = { ...defaultDeps, ...deps };
   const documentId = resolvedDeps.generateDocumentId();
@@ -109,18 +140,57 @@ export async function createDocumentFromLineMessage(
   await resolvedDeps.addAuditLog({
     companyId: input.companyId,
     actorLineUserId: input.sourceUserId ?? null,
-    action: "line_document_saved",
+    action: input.auditAction,
     entityType: "document",
     entityId: document.id,
-    payload: {
-      sourceType: input.sourceType,
-      sourceChannelId: input.sourceChannelId ?? null,
-      messageId: input.messageId,
-      storageBucket: bucket,
+    payload: input.buildAuditPayload({
+      bucket,
       storagePath,
-      documentType: input.documentType,
-    },
+      mimeType,
+    }),
   });
 
   return document;
+}
+
+export async function createDocumentFromLineMessage(
+  input: CreateDocumentFromLineMessageInput,
+  deps: Partial<CreateStoredDocumentDeps> = {},
+): Promise<Document> {
+  return createStoredDocument(
+    {
+      ...input,
+      auditAction: "line_document_saved",
+      buildAuditPayload: ({ bucket, storagePath }) => ({
+        sourceType: input.sourceType,
+        sourceChannelId: input.sourceChannelId ?? null,
+        messageId: input.messageId,
+        storageBucket: bucket,
+        storagePath,
+        documentType: input.documentType,
+      }),
+    },
+    deps,
+  );
+}
+
+export async function createDocumentFromWebUpload(
+  input: CreateDocumentFromWebUploadInput,
+  deps: Partial<CreateStoredDocumentDeps> = {},
+): Promise<Document> {
+  return createStoredDocument(
+    {
+      ...input,
+      auditAction: "web_document_uploaded",
+      buildAuditPayload: ({ bucket, storagePath }) => ({
+        sourceType: input.sourceType,
+        sourceChannelId: input.sourceChannelId ?? null,
+        storageBucket: bucket,
+        storagePath,
+        documentType: input.documentType,
+        note: input.note ?? null,
+      }),
+    },
+    deps,
+  );
 }

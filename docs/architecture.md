@@ -198,3 +198,22 @@ Key assumptions reflected in that schema:
 - `accounting_reports` remains a downstream reporting layer intended to be generated from approved `expense_cases`
 
 This keeps the architecture aligned with the document-first workflow while avoiding premature implementation of webhook, dashboard, or AI execution details.
+
+## STEP 07 Web Upload Addition
+
+STEP 07 adds a second intake adapter alongside LINE:
+
+- `GET /admin/upload` renders the temporary admin upload page
+- `POST /api/admin/documents/upload` validates multipart upload input on the server
+- the route reuses the shared document intake service to store the file and create the `documents` row
+- uploads remain document-first and write audit logs before any future extraction or matching work
+
+This keeps the architecture aligned with the intended intake boundary:
+
+`LINE / Web Upload -> Document Inbox -> Later Extraction / Review`
+
+The temporary admin gate is intentionally lightweight and runtime-only:
+
+- `ADMIN_SECRET` is validated server-side when configured
+- missing `ADMIN_SECRET` does not break build or static rendering
+- missing Supabase runtime env fails gracefully at request time instead of at build time
